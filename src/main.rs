@@ -1,5 +1,6 @@
 mod auth;
 
+use actix_cors::Cors;
 use actix_web::{get, middleware, post, web, App, Error, HttpResponse, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 use env_logger;
@@ -34,9 +35,11 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     HttpServer::new(|| {
+        let cors = Cors::default().send_wildcard();
         App::new()
             .wrap(middleware::Logger::default())
             .wrap(HttpAuthentication::bearer(auth::validator))
+            .wrap(cors)
             .service(hello)
             .service(echo)
             .service(manual_hello)
