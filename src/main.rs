@@ -3,7 +3,7 @@ extern crate diesel;
 extern crate dotenv;
 
 use actix_cors::Cors;
-use actix_web::{error, get, middleware, web, App, Error, HttpResponse, HttpServer};
+use actix_web::{get, middleware, web, App, Error, HttpResponse, HttpServer};
 use actix_web_httpauth::middleware::HttpAuthentication;
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, Pool};
@@ -71,6 +71,31 @@ async fn get_post(id: web::Path<String>, pool: web::Data<DbPool>) -> Result<Http
     }
 }
 
+async fn create_post(
+    req: web::Json<models::NewPost>,
+    pool: web::Data<DbPool>,
+) -> Result<HttpResponse, Error> {
+    let conn = match pool.get() {
+        Ok(conn) => conn,
+        Err(err) => {
+            let res = HttpResponse::InternalServerError()
+                .body(format!("couldn't get db connection from pool: {}", err));
+            return Ok(res);
+        }
+    };
+
+    let post = web::block(move || actions::add_post(&req, &conn)).await;
+
+    match post {
+        Ok(post) => Ok(HttpResponse::Ok().json(post)),
+        Err(err) => {
+            log::info!("{}", err);
+            let res = HttpResponse::InternalServerError().body(format!("InternalServerError"));
+            Ok(res)
+        }
+    }
+}
+
 async fn echo(req: web::Json<EchoRequest>) -> Result<HttpResponse, Error> {
     let res: String = format!("Hello, {}.", req.name);
     info!("{}", res);
@@ -101,8 +126,9 @@ async fn main() -> std::io::Result<()> {
                     .route("", web::post().to(echo)),
             )
             .service(
-                web::scope("/post").route("/{id}", web::get().to(get_post)),
-                // .route("", web::post().to(create_post))
+                web::scope("/post")
+                    .route("/{id}", web::get().to(get_post))
+                    .route("", web::post().to(create_post)),
                 // .route("/{id}", web::get().to(get_post))
                 // .route("/{id}", web::put().to(update_post))
                 // .route("/{id}", web::delete().to(delete_post)),
