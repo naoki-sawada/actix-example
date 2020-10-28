@@ -1,7 +1,7 @@
 use diesel::prelude::*;
 use uuid::Uuid;
 
-use crate::models::{Post,NewPost};
+use crate::models::{NewPost, Post};
 
 pub fn find_post_by_uid(
     uid: Uuid,
@@ -15,10 +15,7 @@ pub fn find_post_by_uid(
     Ok(post)
 }
 
-pub fn add_post(
-    post: &NewPost,
-    conn: &PgConnection,
-) -> Result<Post, diesel::result::Error> {
+pub fn add_post(post: &NewPost, conn: &PgConnection) -> Result<Post, diesel::result::Error> {
     use crate::schema::posts::dsl::posts;
     let new_post = Post {
         id: Uuid::new_v4().to_string(),
@@ -28,4 +25,10 @@ pub fn add_post(
     };
     diesel::insert_into(posts).values(&new_post).execute(conn)?;
     Ok(new_post)
+}
+
+pub fn delete_post(uid: Uuid, conn: &PgConnection) -> Result<Uuid, diesel::result::Error> {
+    use crate::schema::posts::dsl::{id, posts};
+    diesel::delete(posts.filter(id.eq(uid.to_string()))).execute(conn)?;
+    Ok(uid)
 }
