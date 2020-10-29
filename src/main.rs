@@ -199,8 +199,6 @@ async fn main() -> std::io::Result<()> {
                     .route("", web::post().to(create_post))
                     .route("/{id}", web::put().to(update_post))
                     .route("/{id}", web::delete().to(delete_post)),
-                // .route("/{id}", web::get().to(get_post))
-                // .route("/{id}", web::put().to(update_post))
             )
             .service(hello)
             .service(manual_hello)
