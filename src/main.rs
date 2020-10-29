@@ -97,6 +97,40 @@ async fn create_post(
     }
 }
 
+async fn update_post(
+    id: web::Path<String>,
+    req: web::Json<models::UpdatePost>,
+    pool: web::Data<DbPool>,
+) -> Result<HttpResponse, Error> {
+    let uid = match Uuid::parse_str(&id) {
+        Ok(uid) => uid,
+        Err(err) => {
+            let res = HttpResponse::BadRequest().body(format!("Invalid UUID: {}", err));
+            return Ok(res);
+        }
+    };
+
+    let conn = match pool.get() {
+        Ok(conn) => conn,
+        Err(err) => {
+            let res = HttpResponse::InternalServerError()
+                .body(format!("couldn't get db connection from pool: {}", err));
+            return Ok(res);
+        }
+    };
+
+    let post = web::block(move || actions::update_post(uid, &req, &conn)).await;
+
+    match post {
+        Ok(post) => Ok(HttpResponse::Ok().json(post)),
+        Err(err) => {
+            log::info!("{}", err);
+            let res = HttpResponse::InternalServerError().body(format!("InternalServerError"));
+            Ok(res)
+        }
+    }
+}
+
 async fn delete_post(
     id: web::Path<String>,
     pool: web::Data<DbPool>,
@@ -163,6 +197,7 @@ async fn main() -> std::io::Result<()> {
                 web::scope("/post")
                     .route("/{id}", web::get().to(get_post))
                     .route("", web::post().to(create_post))
+                    .route("/{id}", web::put().to(update_post))
                     .route("/{id}", web::delete().to(delete_post)),
                 // .route("/{id}", web::get().to(get_post))
                 // .route("/{id}", web::put().to(update_post))

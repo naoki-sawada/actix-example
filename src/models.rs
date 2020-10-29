@@ -16,3 +16,11 @@ pub struct NewPost {
     pub body: String,
     pub published: bool,
 }
+
+#[derive(AsChangeset, Deserialize)]
+#[table_name = "posts"]
+pub struct UpdatePost {
+    pub title: Option<String>,
+    pub body: Option<String>,
+    pub published: Option<bool>,
+}
